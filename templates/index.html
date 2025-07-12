@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LAPORAN TRANSMISI TVRI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header> 
+    
+    <a href="/logout">🔓 Logout ({{ session['username'] }})</a>
+
+  </header>
+<a href="/" class="back-button" title="Kembali ke Beranda">← Kembali</a>
+
+ <main>
+  <!-- Menu Pilihan -->
+  <nav>
+  <button onclick="showMenu('rohde')">Rohde & Schwarz</button>
+  <button onclick="showMenu('nec')">NEC</button>
+  <button onclick="showMenu('manual')">Input Manual</button> <!-- 🔧 baru -->
+</nav>
+
+
+  <!-- === ROHDE & SCHWARZ === -->
+ <section id="rohde"  style="display: block;">
+  <h2>Rohde & Schwarz</h2>
+
+  <div class="feature-row">
+    <!-- Kamera -->
+    <div class="fitur">
+      <div id="camera-section">
+      <h3>Kamera</h3>
+      <video id="video" autoplay muted playsinline></video>
+      <div class="camera-controls">
+        <button id="toggleCameraBtn">Buka Kamera (Q)</button>
+        <button id="captureBtn">Tangkap Gambar (C)</button>
+      </div>
+      <canvas id="canvas" style="display:none;"></canvas>
+      </div>
+    </div>
+
+    <!-- Upload -->
+    <div class="fitur">
+      <h3>Unggah Gambar</h3>
+      <div id="drop-area" class="drop-area">
+        <form id="upload-form">
+          <p><strong>Drag & Drop</strong> gambar di sini</p>
+          <p>atau</p>
+          <button type="button" id="fileSelect">Pilih Gambar</button>
+          <input type="file" id="fileElem" accept="image/*" hidden />
+        </form>
+      </div>
+    </div>
+   
+
+    <!-- Hasil -->
+    <div class="fitur">
+      <h3>Pratinjau & Hasil</h3>
+      <div id="preview-container"><img id="preview" style="display:none;" /></div>
+      <div id="upload-status"></div>
+      <div id="laporan-link"></div>
+    </div>
+  </div>
+</section>
+
+
+  <!-- === NEC === -->
+  <section id="nec" class="box" style="display: none;">
+    <h2>NEC</h2>
+    <p>Belum ada fitur untuk NEC.</p>
+  </section>
+  <section id="manual" class="box" style="display: none;">
+  <h2>Input Manual Data Transmisi</h2>
+  
+  <form id="manual-form" method="POST" class="form-container">
+  <!-- Box: Transmisi -->
+  <div class="form-box">
+    <h3>📡 Data Transmisi</h3>
+    <label>Merk Transmitter:<br>
+      <select name="merk">
+        <option value="Rohde & Schwarz">Rohde & Schwarz</option>
+        <option value="NEC">NEC</option>
+      </select>
+    </label>
+
+    <label>Forward Power (kW):<br>
+      <input type="number" step="0.01" name="power_real" required>
+    </label>
+
+    <label>Reflected Power (W):<br>
+      <input type="number" step="0.01" name="reflect" required>
+    </label>
+
+    <label>Exciter Aktif:<br>
+      <select name="exciter" required>
+        <option value="A">Exciter A</option>
+        <option value="B">Exciter B</option>
+      </select>
+    </label>
+
+    <label>Downtime (Menit):<br>
+  <input type="number" step="1" min="0" name="downtime" required>
+</label>
+
+  </div>
+
+  <!-- Box: UPS -->
+  <div class="form-box">
+    <h3>🔌 UPS</h3>
+    <label>RS UPS:<br><input type="number" name="RS_UPS" required></label>
+    <label>RN UPS:<br><input type="number" name="RN_UPS" required></label>
+    <label>ST UPS:<br><input type="number" name="ST_UPS" required></label>
+    <label>SN UPS:<br><input type="number" name="SN_UPS" required></label>
+    <label>TR UPS:<br><input type="number" name="TR_UPS" required></label>
+    <label>TN UPS:<br><input type="number" name="TN_UPS" required></label>
+    <label>Frekuensi UPS (Hz):<br><input type="text" name="freq_UPS" required></label>
+  </div>
+
+  <!-- Box: Genset -->
+  <div class="form-box">
+    <h3>⚡ Genset</h3>
+    <label>RS Genset:<br><input type="number" name="RS_Genset" required></label>
+    <label>RN Genset:<br><input type="number" name="RN_Genset" required></label>
+    <label>ST Genset:<br><input type="number" name="ST_Genset" required></label>
+    <label>SN Genset:<br><input type="number" name="SN_Genset" required></label>
+    <label>TR Genset:<br><input type="number" name="TR_Genset" required></label>
+    <label>TN Genset:<br><input type="number" name="TN_Genset" required></label>
+    <label>Frekuensi Genset (Hz):<br><input type="text" name="freq_Genset" required></label>
+  </div>
+
+  <!-- Tombol Submit -->
+  <button type="submit" id="submit-manual" class="button-with-spinner">
+    <span id="submit-text">Simpan Data</span>
+    <div class="spinner" id="spinner-manual"></div>
+  </button>
+</form>
+
+
+
+
+    
+
+    <div id="manual-result"></div>
+  </div>
+  
+</section>
+
+</main>
+
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const preview = document.getElementById('preview');
+    const status = document.getElementById('upload-status');
+
+    let stream = null;
+    let cameraActive = false;
+
+    document.getElementById('toggleCameraBtn').addEventListener('click', toggleCamera);
+    document.getElementById('captureBtn').addEventListener('click', captureImage);
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'q') toggleCamera();
+      if (e.key === 'c') captureImage();
+    });
+   function showMenu(menuId) {
+  document.getElementById('rohde').style.display = menuId === 'rohde' ? 'block' : 'none';
+  document.getElementById('nec').style.display = menuId === 'nec' ? 'block' : 'none';
+  document.getElementById('manual').style.display = menuId === 'manual' ? 'block' : 'none';
+}
+
+
+    async function toggleCamera() {
+      if (cameraActive) {
+        stopCamera();
+        document.getElementById('toggleCameraBtn').textContent = 'Buka Kamera (Q)';
+      } else {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          video.srcObject = stream;
+          cameraActive = true;
+          document.getElementById('toggleCameraBtn').textContent = 'Tutup Kamera (Q)';
+        } catch (err) {
+          alert('Gagal mengakses kamera');
+        }
+      }
+    }
+
+    function stopCamera() {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+        cameraActive = false;
+        video.srcObject = null;
+      }
+    }
+    
+    function captureImage() {
+      if (!cameraActive) return;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append('image', blob, 'capture.jpg');
+        uploadImage(formData);
+        const previewURL = URL.createObjectURL(blob);
+        preview.src = previewURL;
+        preview.style.display = 'block';
+      }, 'image/jpeg');
+    }
+function isMobileDevice() {
+  return /Mobi|Android|iPhone/i.test(navigator.userAgent);
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+  if (isMobileDevice()) {
+    const cameraSection = document.getElementById("camera-section");
+    if (cameraSection) {
+      cameraSection.style.display = "none";
+    }
+  }
+});
+    // ==== Drag & Drop Upload Logic ====
+    const dropArea = document.getElementById("drop-area");
+    const fileElem = document.getElementById("fileElem");
+    const fileSelect = document.getElementById("fileSelect");
+
+    fileSelect.addEventListener("click", () => fileElem.click());
+
+    ["dragenter", "dragover"].forEach(eventName => {
+      dropArea.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropArea.classList.add("highlight");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(eventName => {
+      dropArea.addEventListener(eventName, (e) => {
+        e.preventDefault();
+        dropArea.classList.remove("highlight");
+      });
+    });
+
+    dropArea.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length) handleFiles(files[0]);
+    });
+
+    fileElem.addEventListener("change", () => {
+      if (fileElem.files.length) handleFiles(fileElem.files[0]);
+    });
+
+    function handleFiles(file) {
+      const formData = new FormData();
+      formData.append("image", file);
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        preview.src = e.target.result;
+        preview.style.display = "block";
+      };
+      reader.readAsDataURL(file);
+      uploadImage(formData);
+    }
+
+    // === Upload to backend ===
+    function uploadImage(formData) {
+      status.innerHTML = "<em>Memproses gambar...</em>";
+      fetch("/upload", {
+        method: "POST",
+        body: formData,
+      })
+      .then(resp => resp.json())
+      .then(data => {
+  status.innerHTML = `
+    <div class="result">
+      <p><strong>Forward Power:</strong> ${data.forward_power}</p>
+      <p><strong>Reflected Power:</strong> ${data.reflected_power}</p>
+    </div>
+  `;
+
+  if (data.laporan_url) {
+    document.getElementById('laporan-link').innerHTML =
+      `<a href="${data.laporan_url}" target="_blank" download>
+        📥 Unduh Laporan JSON
+      </a>`;
+  }
+})
+
+      .catch(() => {
+        status.innerHTML = "<span class='error'>Gagal memproses gambar.</span>";
+      });
+    }
+
+// === Event listener untuk form manual ===
+document.addEventListener("DOMContentLoaded", function () {
+  const manualForm = document.getElementById("manual-form");
+  const submitBtn = document.getElementById("submit-manual");
+  const spinner = document.getElementById("spinner-manual");
+  const submitText = document.getElementById("submit-text");
+
+  if (manualForm) {
+    manualForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      // Tampilkan spinner, sembunyikan teks
+      submitBtn.disabled = true;
+      spinner.style.display = "block";
+      submitText.style.display = "none";
+
+      const formData = new FormData(manualForm);
+
+      fetch("/manual", {
+        method: "POST",
+        body: formData
+      })
+      .then(resp => resp.json())
+      .then(data => {
+        document.getElementById("manual-result").innerHTML = `
+          ✅ Laporan Disimpan<br>
+          ID: ${data.id}<br>
+          Petugas: ${data.petugas}<br>
+          <a href="${data.laporan_url}" download>⬇ Unduh JSON</a>
+          <a href="${data.pdf_url}" download>📄 Unduh PDF</a>
+        `;
+      })
+      .catch(err => {
+        alert("Gagal menyimpan laporan.");
+        console.error(err);
+      })
+      .finally(() => {
+        // Sembunyikan spinner, tampilkan teks kembali
+        spinner.style.display = "none";
+        submitText.style.display = "inline";
+        submitBtn.disabled = false;
+      });
+    });
+  }
+});
+
+
+  </script>
+</body>
+</html>

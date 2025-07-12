@@ -1,0 +1,19 @@
+# Jangan commit credential dan file sensitif
+.env
+*.json
+users.db
+
+# Output upload atau file laporan
+uploads/
+laporan_manual.json
+laporan_terkirim.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# VSCode/IDE
+.vscode/
+.idea/
+
+*.pdf

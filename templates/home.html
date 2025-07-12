@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>Beranda | TRAPS</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+</head>
+<body>
+  <header class="header">
+  <div class="logo">
+    <img src="{{ url_for('static', filename='logo-tvri.png') }}" alt="Logo TVRI">
+    <span>| TRAPS</span>
+  </div>
+  <nav>
+    <a href="/scanner">Scanner</a>
+    <a href="/logout">🔓 Logout ({{ session['username'] }})</a>
+  </nav>
+</header>
+
+
+  <main class="home-landing">
+    <section class="hero">
+      <img src="{{ url_for('static', filename='landing.png') }}" alt="OCR Visual" class="hero-img">
+      <h1>{{ greeting }}, {{ username }} 👋</h1>
+      <p>Selamat datang di Transmission Report and Portal System (TRAPS)<br>
+        Isi laporan secara otomatis atau manual hanya dengan beberapa klik.</p>
+      <a href="/manual" class="cta-button">📝 Mulai Laporan</a>
+    </section>
+  </main>
+</body>
+</html>
