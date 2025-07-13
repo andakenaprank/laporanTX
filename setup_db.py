@@ -1,21 +1,27 @@
-# setup_db.py
-import sqlite3
+# setup_db.py versi MySQL
+import pymysql
 from werkzeug.security import generate_password_hash
 
-conn = sqlite3.connect('users.db')
-c = conn.cursor()
-c.execute('''
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+connection = pymysql.connect(
+    host='localhost',
+    user='root',
+    password='',
+    db='ocr_v3'
 )
-''')
 
-# Tambahkan user admin awal (opsional)
-hashed_pw = generate_password_hash("admin123")
-c.execute("INSERT INTO users (username, password) VALUES (?, ?)", ("admin", hashed_pw))
+with connection.cursor() as cursor:
+    sql = """
+    CREATE TABLE IF NOT EXISTS users (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(255) UNIQUE NOT NULL,
+      password VARCHAR(255) NOT NULL
+    )
+    """
+    cursor.execute(sql)
 
-conn.commit()
-conn.close()
-print("Database selesai dibuat.")
+    hashed_pw = generate_password_hash("admin123")
+    cursor.execute("INSERT IGNORE INTO users (username, password) VALUES (%s, %s)", ("admin", hashed_pw))
+
+    connection.commit()
+
+print("Database MySQL selesai dibuat.")

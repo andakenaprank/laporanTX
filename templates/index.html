@@ -17,14 +17,14 @@
  <main>
   <!-- Menu Pilihan -->
   <nav>
-  <button onclick="showMenu('rohde')">Rohde & Schwarz</button>
-  <button onclick="showMenu('nec')">NEC</button>
-  <button onclick="showMenu('manual')">Input Manual</button> <!-- 🔧 baru -->
+  <a href="{{ url_for('scanner') }}"><button>Rohde & Schwarz</button></a>
+   <a href="#"><button>NEC</button></a>
+  <a href="{{ url_for('manual_page') }}"><button>Input Manual</button></a>
 </nav>
 
 
   <!-- === ROHDE & SCHWARZ === -->
- <section id="rohde"  style="display: block;">
+ <section id="rohde" {% if mode != 'scanner' %}style="display:none;"{% endif %}>
   <h2>Rohde & Schwarz</h2>
 
   <div class="feature-row">
@@ -71,10 +71,10 @@
     <h2>NEC</h2>
     <p>Belum ada fitur untuk NEC.</p>
   </section>
-  <section id="manual" class="box" style="display: none;">
+<section id="manual" class="box" {% if mode != 'manual' %}style="display:none;"{% endif %}>
   <h2>Input Manual Data Transmisi</h2>
   
-  <form id="manual-form" method="POST" class="form-container">
+  <form id="manual-form" method="POST" class="form-container" enctype="multipart/form-data">
   <!-- Box: Transmisi -->
   <div class="form-box">
     <h3>📡 Data Transmisi</h3>
@@ -104,6 +104,9 @@
   <input type="number" step="1" min="0" name="downtime" required>
 </label>
 
+<label>Foto Bukti Transmisi:<br>
+  <input type="file" name="bukti_transmisi" accept="image/*" required>
+</label>
   </div>
 
   <!-- Box: UPS -->
@@ -116,6 +119,9 @@
     <label>TR UPS:<br><input type="number" name="TR_UPS" required></label>
     <label>TN UPS:<br><input type="number" name="TN_UPS" required></label>
     <label>Frekuensi UPS (Hz):<br><input type="text" name="freq_UPS" required></label>
+    <label>Foto Bukti UPS:<br>
+  <input type="file" name="bukti_ups" accept="image/*" required>
+</label>
   </div>
 
   <!-- Box: Genset -->
@@ -128,6 +134,9 @@
     <label>TR Genset:<br><input type="number" name="TR_Genset" required></label>
     <label>TN Genset:<br><input type="number" name="TN_Genset" required></label>
     <label>Frekuensi Genset (Hz):<br><input type="text" name="freq_Genset" required></label>
+    <label>Foto Bukti Genset<br>
+  <input type="file" name="bukti_genset" accept="image/*" required>
+</label>
   </div>
 
   <!-- Tombol Submit -->
@@ -303,11 +312,11 @@ document.addEventListener("DOMContentLoaded", function () {
   const spinner = document.getElementById("spinner-manual");
   const submitText = document.getElementById("submit-text");
 
-  if (manualForm) {
+ if (manualForm) {
     manualForm.addEventListener("submit", function (e) {
       e.preventDefault();
 
-      // Tampilkan spinner, sembunyikan teks
+      // Tampilkan spinner
       submitBtn.disabled = true;
       spinner.style.display = "block";
       submitText.style.display = "none";
@@ -318,22 +327,28 @@ document.addEventListener("DOMContentLoaded", function () {
         method: "POST",
         body: formData
       })
-      .then(resp => resp.json())
+      .then(resp => {
+        if (!resp.ok) throw new Error("HTTP error " + resp.status);
+        return resp.json();
+      })
       .then(data => {
-        document.getElementById("manual-result").innerHTML = `
-          ✅ Laporan Disimpan<br>
-          ID: ${data.id}<br>
-          Petugas: ${data.petugas}<br>
-          <a href="${data.laporan_url}" download>⬇ Unduh JSON</a>
-          <a href="${data.pdf_url}" download>📄 Unduh PDF</a>
-        `;
+        if (data.status === "success") {
+          document.getElementById("manual-result").innerHTML = `
+            ✅ Laporan Disimpan<br>
+            ID: ${data.id}<br>
+            Petugas: ${data.petugas}<br>
+            <a href="${data.laporan_url}" download>⬇ Unduh JSON</a> |
+            <a href="${data.pdf_url}" download>📄 Unduh PDF</a>
+          `;
+        } else {
+          alert("❌ Gagal: " + data.message);
+        }
       })
       .catch(err => {
-        alert("Gagal menyimpan laporan.");
+        alert("❌ Gagal menyimpan laporan.");
         console.error(err);
       })
       .finally(() => {
-        // Sembunyikan spinner, tampilkan teks kembali
         spinner.style.display = "none";
         submitText.style.display = "inline";
         submitBtn.disabled = false;
